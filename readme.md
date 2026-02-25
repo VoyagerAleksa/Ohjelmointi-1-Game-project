@@ -4,6 +4,9 @@ Hot/cold-tyylinen lentopeli Euroopan lentokentillä! Etsi kadonnutta perintölau
 
 ## Asennus
 
+### 1. Lataa SQL-skriptit GitHubista
+- **database/** -kansiossa: `lp.sql` + `Database_creation.sql`
+
 ### 1. Tietokanta (MariaDB/MySQL)
 ```bash
 mysql -u käyttäjä -p
