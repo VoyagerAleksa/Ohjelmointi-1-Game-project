@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, session, send_from_directory
+from datetime import datetime
 import mysql.connector
 
 from difficulty_config import DifficultyConfig
@@ -35,6 +36,21 @@ def safe_round(value, digits=2):
         return round(float(value), digits)
     except Exception:
         return 0
+
+
+def format_elapsed_time(started_at_iso):
+    if not started_at_iso:
+        return "00:00"
+
+    try:
+        started_at = datetime.fromisoformat(started_at_iso)
+        elapsed = datetime.utcnow() - started_at
+        total_seconds = max(int(elapsed.total_seconds()), 0)
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        return f"{minutes:02d}:{seconds:02d}"
+    except Exception:
+        return "00:00"
 
 
 def get_airport_coordinates(icao):
@@ -323,23 +339,26 @@ def finalize_game_setup(game_state):
     game_state['lat'] = current_coords[0]
     game_state['lng'] = current_coords[1]
     game_state['heading'] = safe_round(direction_to_luggage.direction_degrees(), 2)
-    game_state['m_direction'] = safe_round(direction_to_luggage.direction_degrees(), 2)
+    game_state['m_direction'] = 0
     game_state['distance_to_luggage'] = safe_round(distance_to_luggage, 2)
     game_state['flight_distance'] = 0
-
+    game_state['target_lat'] = luggage_coords[0]
+    game_state['target_lng'] = luggage_coords[1]
     game_state['aircraft_type'] = 'medium'
     game_state['aircraft_name'] = 'Waiting for flight'
     game_state['flight_co2'] = 0
     game_state['session_co2'] = 0
 
-    game_state['feedback'] = (
-        f"Current location: {game_state['current_airport_name']} in {game_state['current_country_name']}."
-    )
+    game_state['feedback'] = ''
 
     build_country_question(game_state)
 
 
 def build_game_view(game_state):
+    target_lat = game_state.get('target_lat')
+    target_lng = game_state.get('target_lng')
+    target_coordinates = [target_lat, target_lng] if target_lat is not None and target_lng is not None else None
+
     return {
         'map': {
             'name': game_state.get('current_airport_name', 'Unknown airport'),
@@ -354,7 +373,8 @@ def build_game_view(game_state):
             'aircraft_type': game_state.get('aircraft_type', 'medium'),
             'aircraft_name': game_state.get('aircraft_name', 'Waiting for flight'),
             'flight_co2': game_state.get('flight_co2', 0),
-            'session_co2': game_state.get('session_co2', 0)
+            'session_co2': game_state.get('session_co2', 0),
+            'target_coordinates': target_coordinates
         },
         'panel': {
             'current_airport': game_state.get('current_airport_name', '—'),
@@ -369,7 +389,8 @@ def build_game_view(game_state):
             'visited_airports': game_state.get('visited_airports', []),
             'question_stage': game_state.get('question_stage', 'setup'),
             'setup_stage': game_state.get('setup_stage', 'start_country'),
-            'game_started': game_state.get('game_started', False)
+            'game_started': game_state.get('game_started', False),
+            'target_coordinates': target_coordinates
         }
     }
 
@@ -380,6 +401,7 @@ def initialize_new_game_state(player_name, level):
         'difficulty_level': level,
         'game_started': False,
         'won': False,
+        'started_at': datetime.utcnow().isoformat(),
 
         'setup_stage': 'start_country',
         'question_stage': 'setup',
@@ -401,6 +423,8 @@ def initialize_new_game_state(player_name, level):
         'm_direction': 0,
         'distance_to_luggage': 0,
         'flight_distance': 0,
+        'target_lat': None,
+        'target_lng': None,
 
         'aircraft_type': 'medium',
         'aircraft_name': 'Waiting for flight',
@@ -423,10 +447,11 @@ def apply_flight_move(game_state, next_location):
 
     next_coords = get_airport_coordinates(next_location)
     if not next_coords or next_coords[0] is None:
-        game_state['feedback'] = 'Could not resolve destination coordinates.'
+        game_state['feedback'] = ''
         build_country_question(game_state)
-        return game_state, False, game_state['feedback']
+        return game_state, False, 'Could not resolve destination coordinates.'
 
+    # Направление движения самолёта: current -> next
     movement_direction = Directions(current_coords, next_coords)
     flight_distance = movement_direction.distance_km()
 
@@ -439,6 +464,13 @@ def apply_flight_move(game_state, next_location):
 
     luggage_location = game_state['luggage_location']
     luggage_coords = get_airport_coordinates(luggage_location)
+
+    if not luggage_coords or luggage_coords[0] is None:
+        game_state['feedback'] = ''
+        build_country_question(game_state)
+        return game_state, False, 'Could not resolve luggage coordinates.'
+
+    # Направление компаса: next/current actual location -> luggage
     direction_to_luggage = Directions(next_coords, luggage_coords)
     distance_to_luggage = direction_to_luggage.distance_km()
 
@@ -452,14 +484,14 @@ def apply_flight_move(game_state, next_location):
     game_state['current_location'] = next_location
     game_state['current_airport_name'] = get_airport_name(next_location)
     game_state['current_country_name'] = get_airport_country(next_location)
-
     game_state['lat'] = next_coords[0]
     game_state['lng'] = next_coords[1]
     game_state['heading'] = safe_round(direction_to_luggage.direction_degrees(), 2)
     game_state['m_direction'] = safe_round(movement_direction.direction_degrees(), 2)
     game_state['distance_to_luggage'] = safe_round(distance_to_luggage, 2)
     game_state['flight_distance'] = safe_round(flight_distance, 2)
-
+    game_state['target_lat'] = luggage_coords[0]
+    game_state['target_lng'] = luggage_coords[1]
     game_state['aircraft_type'] = aircraft_type
     game_state['aircraft_name'] = flight_data.get('aircraft_name', aircraft_type)
     game_state['flight_co2'] = safe_round(flight_data.get('co2_kg', 0), 2)
@@ -472,12 +504,12 @@ def apply_flight_move(game_state, next_location):
         game_state['won'] = True
         game_state['question_text'] = 'You found the luggage!'
         game_state['options'] = []
-        game_state['feedback'] = f"You found the luggage at {game_state['current_airport_name']}!"
-        return game_state, True, game_state['feedback']
+        game_state['feedback'] = ''
+        return game_state, True, 'You found the luggage!'
 
-    game_state['feedback'] = f"Flight set to {game_state['current_airport_name']}."
+    game_state['feedback'] = ''
     build_country_question(game_state)
-    return game_state, True, game_state['feedback']
+    return game_state, True, 'Flight completed.'
 
 
 def apply_answer_to_game(game_state, answer):
@@ -660,7 +692,7 @@ def submit_answer():
     if answer is None:
         return jsonify({'success': False, 'error': 'Missing answer'}), 400
 
-    game_state = session.get('game_state', {})
+    game_state = session.get('game_state')
     if not game_state:
         return jsonify({'success': False, 'error': 'No active game'}), 400
 
@@ -679,13 +711,14 @@ def submit_answer():
     if updated_state.get('won'):
         response['won'] = True
         response['final_score'] = calculate_final_score(updated_state)
+        response['victory_url'] = '/victory/victory.html'
 
     return jsonify(response)
 
 
 @app.route('/api/finish_game', methods=['POST'])
 def finish_game():
-    game_state = session.get('game_state', {})
+    game_state = session.get('game_state')
     if not game_state:
         return jsonify({'success': False, 'error': 'No active game'}), 400
 
@@ -695,6 +728,29 @@ def finish_game():
         'score': calculate_final_score(game_state),
         'player_name': game_state.get('player_name'),
         'difficulty_level': game_state.get('difficulty_level')
+    })
+
+
+@app.route('/api/victory_data', methods=['GET'])
+def get_victory_data():
+    game_state = session.get('game_state')
+
+    if not game_state:
+        return jsonify({'success': False, 'error': 'No active game'}), 400
+
+    if not game_state.get('won'):
+        return jsonify({'success': False, 'error': 'Game not finished yet'}), 400
+
+    visited_airports = game_state.get('visited_airports', [])
+    flights_count = max(len(visited_airports) - 1, 0)
+
+    return jsonify({
+        'success': True,
+        'victory': {
+            'flights_count': flights_count,
+            'time': format_elapsed_time(game_state.get('started_at')),
+            'points': calculate_final_score(game_state)
+        }
     })
 
 

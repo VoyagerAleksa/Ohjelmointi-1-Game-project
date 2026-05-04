@@ -22,10 +22,9 @@ async function refreshGameView() {
       return;
     }
 
-    renderGameView(data.view);
+    renderGameView(data.view, false);
   } catch (err) {
     console.error('refreshGameView error:', err);
-    setFeedback('Server connection error');
   }
 }
 
@@ -43,18 +42,17 @@ async function startNewGame() {
     const startData = await startRes.json();
 
     if (!startData.success || !startData.view) {
-      setFeedback(startData.error || 'Failed to start game');
+      console.error('Failed to start game:', startData);
       return;
     }
 
-    renderGameView(startData.view);
+    renderGameView(startData.view, true);
   } catch (err) {
     console.error('startNewGame error:', err);
-    setFeedback('Failed to start new game');
   }
 }
 
-function renderGameView(view) {
+function renderGameView(view, clearInput = true) {
   const questionEl = document.getElementById('gp-question');
   const optionsEl = document.getElementById('gp-options');
   const inputEl = document.getElementById('gp-input');
@@ -79,12 +77,10 @@ function renderGameView(view) {
     }).join('');
   }
 
-  if (inputEl) {
+  if (inputEl && clearInput) {
     inputEl.value = '';
     inputEl.focus();
   }
-
-  setFeedback(view.panel?.feedback || '');
 }
 
 async function submitNumericAnswer() {
@@ -94,18 +90,19 @@ async function submitNumericAnswer() {
   const rawValue = input.value.trim();
 
   if (!rawValue) {
-    setFeedback('Enter a number');
+    console.warn('Empty input');
+    input.focus();
     return;
   }
 
   const numericValue = Number(rawValue);
 
   if (!Number.isInteger(numericValue) || numericValue < 1) {
-    setFeedback('Enter a valid option number');
+    console.warn('Invalid option number:', rawValue);
+    input.focus();
+    input.select();
     return;
   }
-
-  setFeedback('Submitting answer...');
 
   try {
     const res = await fetch('/api/submit_answer', {
@@ -115,19 +112,20 @@ async function submitNumericAnswer() {
     });
 
     const data = await res.json();
+    console.log('submit_answer response:', data);
 
     if (!data.success && !data.view) {
-      setFeedback(data.error || data.message || 'Answer failed');
+      console.error('Answer failed:', data);
+      input.focus();
+      input.select();
       return;
     }
 
     if (data.view) {
-      renderGameView(data.view);
+      renderGameView(data.view, true);
     }
 
     if (data.won) {
-      setFeedback(data.message || 'You found the luggage!');
-
       try {
         const finishResponse = await fetch('/api/finish_game', {
           method: 'POST',
@@ -153,18 +151,19 @@ async function submitNumericAnswer() {
 
       if (typeof showVictoryScreen === 'function') {
         showVictoryScreen();
+      } else if (data.victory_url) {
+          window.location.href = data.victory_url;
+      } else {
+          window.location.href = '/victory/victory.html';
       }
     }
   } catch (err) {
     console.error('submitNumericAnswer error:', err);
-    setFeedback('Server error while submitting answer');
   }
 }
 
 async function resetGameSession() {
   try {
-    setFeedback('Resetting game...');
-
     const resetRes = await fetch('/api/reset_game', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
@@ -173,30 +172,14 @@ async function resetGameSession() {
     const resetData = await resetRes.json();
 
     if (!resetData.success) {
-      setFeedback(resetData.error || 'Failed to reset game');
+      console.error('Failed to reset game:', resetData);
       return;
     }
 
     await startNewGame();
-    setFeedback('');
   } catch (err) {
     console.error('resetGameSession error:', err);
-    setFeedback('Reset failed');
   }
-}
-
-function setFeedback(text) {
-  const feedbackEl = document.getElementById('gp-feedback');
-  if (!feedbackEl) return;
-
-  const value = text || '';
-
-  if (value.startsWith('Flight set to ')) {
-    feedbackEl.textContent = '';
-    return;
-  }
-
-  feedbackEl.textContent = value;
 }
 
 function escapeHtml(str) {
@@ -233,30 +216,27 @@ function injectPanelUI() {
       >
       <button id="gp-submit" class="gp-submit" type="button">→</button>
     </div>
-
-    <div class="gp-feedback" id="gp-feedback"></div>
   `;
 
   document.body.appendChild(div);
 
   const input = document.getElementById('gp-input');
   const submit = document.getElementById('gp-submit');
-  const reset = document.getElementById('gp-reset');
 
   if (input) {
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
+        event.preventDefault();
         submitNumericAnswer();
       }
     });
   }
 
   if (submit) {
-    submit.addEventListener('click', submitNumericAnswer);
-  }
-
-  if (reset) {
-    reset.addEventListener('click', resetGameSession);
+    submit.addEventListener('click', (event) => {
+      event.preventDefault();
+      submitNumericAnswer();
+    });
   }
 }
 
@@ -286,33 +266,6 @@ function injectPanelStyles() {
       flex-direction: column;
       gap: 8px;
       overflow: hidden;
-    }
-
-    .gp-reset {
-      flex-shrink: 0;
-      background: #19314f;
-      color: #dcecff;
-      border: 1px solid #2b4e77;
-      border-right: none;
-      border-radius: 8px 0 0 8px;
-      padding: 8px 14px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.18s, border-color 0.18s;
-    }
-
-    .gp-reset:hover {
-      background: #234366;
-      border-color: #4db8ff;
-    }
-    
-    .gp-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #4db8ff;
-      line-height: 1.3;
-      word-break: break-word;
     }
 
     .gp-main-block {
@@ -441,16 +394,6 @@ function injectPanelStyles() {
 
     .gp-submit:active {
       transform: scale(0.96);
-    }
-
-    .gp-feedback {
-      min-height: 18px;
-      font-size: 12px;
-      font-weight: 500;
-      text-align: center;
-      color: #ffcf70;
-      flex-shrink: 0;
-      padding-right: 8px;
     }
 
     @media (max-width: 1500px) {
