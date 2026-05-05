@@ -150,6 +150,7 @@ const T = {
 let lang = 'en';
 let currentUser = '';
 let currentGame = null;
+let hintsEnabled = true;
 
 // ── LANGUAGE ──
 function setLang(l) {
@@ -385,51 +386,58 @@ function go(id) {
 }
 
 // ── GAME ──
-function startGame(level) {
+async function startGame(level) {
   const levelMap = {
-    1: 'level1',
-    2: 'level2',
-    3: 'level3'
+    1: {
+      level: 'level1',
+      airport_types: ['large_airport']
+    },
+    2: {
+      level: 'level2',
+      airport_types: ['large_airport', 'medium_airport']
+    },
+    3: {
+      level: 'level3',
+      airport_types: ['large_airport', 'medium_airport', 'small_airport']
+    }
   };
 
-  const levelId = levelMap[level];
-  if (!levelId) {
+  const config = levelMap[level];
+
+  if (!config) {
     alert('Invalid level selected');
     return;
   }
 
-  if (typeof Sound !== 'undefined' && Sound.playGameTheme) Sound.playGameTheme();
+  try {
+    if (typeof Sound !== 'undefined' && Sound.playGameTheme) {
+      Sound.playGameTheme();
+    }
 
-  const msg = lang === 'fi'
-    ? `Aloitetaan taso ${level}...`
-    : `Starting Level ${level}...`;
-
-  alert(msg);
-
-  fetch('/api/start_game', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      player_name: currentUser || 'Guest',
-      level: levelId
-    })
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        currentGame = data;
-        go('screen-game');
-        updateGameUI(data);
-      } else {
-        alert('Error starting game: ' + data.error);
-      }
-    })
-    .catch((error) => {
-      console.error('Error:', error);
-      alert('Failed to start game. Please try again.');
+    const startRes = await fetch('/api/start_game', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_name: currentUser || 'Guest',
+        level: config.level,
+        airport_types: config.airport_types
+      })
     });
+
+    const data = await startRes.json();
+
+    if (!data.success) {
+      console.error('Error starting game:', data.error);
+      alert(data.error || 'Failed to start game');
+      return;
+    }
+
+    currentGame = data.view || null;
+    window.location.href = '/map.html';
+  } catch (error) {
+    console.error('startGame error:', error);
+    alert('Failed to start game. Please try again.');
+  }
 }
 
 function updateGameUI(gameData) {
@@ -445,6 +453,12 @@ function toggle(setting, val) {
 
   if (setting === 'sound' && typeof Sound !== 'undefined' && Sound.setSound) {
     Sound.setSound(val === 'on');
+  }
+
+  if (setting === 'hints') {
+    hintsEnabled = val === 'on';
+    const fab = document.getElementById('lug-fab');
+    if (fab) fab.style.display = hintsEnabled ? 'flex' : 'none';
   }
 }
 

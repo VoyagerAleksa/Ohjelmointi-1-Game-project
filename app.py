@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify, session, send_from_directory
-from datetime import datetime
+from datetime import datetime, UTC
 import mysql.connector
 import bcrypt
 
-from difficulty_config import DifficultyConfig
+from difficulty_config import *
 from leaderboard import save_to_leaderboard, get_leaderboard_data
 from distance_direction import Directions
 from flight_emissions import FlightEmissions
@@ -16,7 +16,7 @@ connection = mysql.connector.connect(
     port=3306,
     database='game_project',
     user='root',
-    password='...',
+    password='BubaBuba60',
     autocommit=True,
     charset='utf8mb4',
     use_unicode=True
@@ -45,7 +45,9 @@ def format_elapsed_time(started_at_iso):
 
     try:
         started_at = datetime.fromisoformat(started_at_iso)
-        elapsed = datetime.utcnow() - started_at
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=UTC)
+        elapsed = datetime.now(UTC) - started_at
         total_seconds = max(int(elapsed.total_seconds()), 0)
         minutes = total_seconds // 60
         seconds = total_seconds % 60
@@ -269,10 +271,15 @@ def build_country_question(game_state):
 
 
 def build_airport_question(game_state, iso_country):
-    level_config = DifficultyConfig(game_state['difficulty_level'])
+    airport_types = game_state.get('airport_types')
+
+    if not airport_types:
+        level_config = DifficultyConfig(game_state['difficulty_level'])
+        airport_types = level_config.airport_types
+
     raw_options = get_airports_in_country(
         iso_country,
-        level_config.airport_types,
+        airport_types,
         current_location=game_state['current_location']
     )
 
@@ -289,14 +296,18 @@ def build_airport_question(game_state, iso_country):
 
 
 def finalize_game_setup(game_state):
-    level_config = DifficultyConfig(game_state['difficulty_level'])
+    airport_types = game_state.get('airport_types')
+
+    if not airport_types:
+        level_config = DifficultyConfig(game_state['difficulty_level'])
+        airport_types = level_config.airport_types
 
     start_country_name = game_state['start_country_name']
     destination_country_name = game_state['destination_country_name']
 
     current_location = get_random_airport_by_country_name(
         destination_country_name,
-        level_config.airport_types
+        airport_types
     )
     luggage_location = spawn_baggage_between_countries(
         start_country_name,
@@ -304,53 +315,50 @@ def finalize_game_setup(game_state):
     )
 
     if not current_location:
-        raise ValueError("Could not find starting airport in destination country")
-
+        raise ValueError('Could not find starting airport in destination country')
     if not luggage_location:
-        raise ValueError("Could not spawn luggage between selected countries")
+        raise ValueError('Could not spawn luggage between selected countries')
 
     current_coords = get_airport_coordinates(current_location)
     luggage_coords = get_airport_coordinates(luggage_location)
 
     if not current_coords or current_coords[0] is None:
-        raise ValueError("Could not resolve starting airport coordinates")
-
+        raise ValueError('Could not resolve starting airport coordinates')
     if not luggage_coords or luggage_coords[0] is None:
-        raise ValueError("Could not resolve luggage airport coordinates")
+        raise ValueError('Could not resolve luggage airport coordinates')
 
     direction_to_luggage = Directions(current_coords, luggage_coords)
     distance_to_luggage = direction_to_luggage.distance_km()
 
     game_state['game_started'] = True
     game_state['setup_stage'] = 'complete'
-
     game_state['current_location'] = current_location
     game_state['current_airport_name'] = get_airport_name(current_location)
     game_state['current_country_name'] = get_airport_country(current_location)
-
     game_state['luggage_location'] = luggage_location
     game_state['visited_airports'] = [
         {
-            "icao": current_location,
-            "name": get_airport_name(current_location),
-            "country": get_airport_country(current_location)
+            'icao': current_location,
+            'name': get_airport_name(current_location),
+            'country': get_airport_country(current_location)
         }
     ]
 
     game_state['lat'] = current_coords[0]
     game_state['lng'] = current_coords[1]
     game_state['heading'] = safe_round(direction_to_luggage.direction_degrees(), 2)
-    game_state['m_direction'] = 0
+    game_state['m_direction'] = safe_round(direction_to_luggage.direction_degrees(), 2)
     game_state['distance_to_luggage'] = safe_round(distance_to_luggage, 2)
     game_state['flight_distance'] = 0
-    game_state['target_lat'] = luggage_coords[0]
-    game_state['target_lng'] = luggage_coords[1]
+
     game_state['aircraft_type'] = 'medium'
     game_state['aircraft_name'] = 'Waiting for flight'
     game_state['flight_co2'] = 0
     game_state['session_co2'] = 0
 
-    game_state['feedback'] = ''
+    game_state['feedback'] = (
+        f"Current location: {game_state['current_airport_name']} in {game_state['current_country_name']}."
+    )
 
     build_country_question(game_state)
 
@@ -391,18 +399,20 @@ def build_game_view(game_state):
             'question_stage': game_state.get('question_stage', 'setup'),
             'setup_stage': game_state.get('setup_stage', 'start_country'),
             'game_started': game_state.get('game_started', False),
-            'target_coordinates': target_coordinates
+            'target_coordinates': target_coordinates,
+            'moves': game_state.get('moves', 0)
         }
     }
 
 
-def initialize_new_game_state(player_name, level):
+def initialize_new_game_state(player_name, level, airport_types=None):
     game_state = {
         'player_name': player_name,
         'difficulty_level': level,
+        'airport_types': airport_types or [],
+        'started_at': datetime.now(UTC).isoformat(),
         'game_started': False,
         'won': False,
-        'started_at': datetime.utcnow().isoformat(),
 
         'setup_stage': 'start_country',
         'question_stage': 'setup',
@@ -424,8 +434,6 @@ def initialize_new_game_state(player_name, level):
         'm_direction': 0,
         'distance_to_luggage': 0,
         'flight_distance': 0,
-        'target_lat': None,
-        'target_lng': None,
 
         'aircraft_type': 'medium',
         'aircraft_name': 'Waiting for flight',
@@ -574,6 +582,17 @@ def calculate_final_score(game_state):
     return int(max(0, score_with_multiplier - emissions_penalty))
 
 
+def get_victory_payload(game_state):
+    return {
+        'player_name': game_state.get('player_name', 'Guest'),
+        'difficulty_level': game_state.get('difficulty_level', 'level2'),
+        'points': calculate_final_score(game_state),
+        'moves': int(game_state.get('moves', 0)),
+        'time': format_elapsed_time(game_state.get('started_at')),
+        'saved_to_leaderboard': False
+    }
+
+
 # ── AUTH HELPERS ──────────────────────────────────────────────
 
 def db_get_user(username):
@@ -609,8 +628,6 @@ def validate_auth_input(username, password):
     if len(password) < 6:
         return 'Password must be at least 6 characters'
     return None
-
-
 
 
 @app.route('/api/register', methods=['POST'])
@@ -756,10 +773,14 @@ def start_game():
     data = request.get_json() or {}
     player_name = data.get('player_name', 'Guest')
     level = data.get('level', 'level2')
+    airport_types = data.get('airport_types')
+
+    if not airport_types:
+        airport_types = DifficultyConfig.get_airport_types(level)
 
     try:
         DifficultyConfig(level)
-        game_state = initialize_new_game_state(player_name, level)
+        game_state = initialize_new_game_state(player_name, level, airport_types)
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
@@ -832,7 +853,7 @@ def finish_game():
 
 
 @app.route('/api/victory_data', methods=['GET'])
-def get_victory_data():
+def api_victory_data():
     game_state = session.get('game_state')
 
     if not game_state:
@@ -841,17 +862,17 @@ def get_victory_data():
     if not game_state.get('won'):
         return jsonify({'success': False, 'error': 'Game not finished yet'}), 400
 
-    visited_airports = game_state.get('visited_airports', [])
-    flights_count = max(len(visited_airports) - 1, 0)
+    payload = get_victory_payload(game_state)
 
-    return jsonify({
-        'success': True,
-        'victory': {
-            'flights_count': flights_count,
-            'time': format_elapsed_time(game_state.get('started_at')),
-            'points': calculate_final_score(game_state)
-        }
-    })
+    saved = save_to_leaderboard(
+        payload['player_name'],
+        payload['points'],
+        payload['difficulty_level']
+    )
+
+    payload['saved_to_leaderboard'] = bool(saved)
+    payload['success'] = True
+    return jsonify(payload)
 
 
 @app.route('/api/leaderboard', methods=['GET'])
@@ -888,7 +909,10 @@ def api_save_score():
 
 @app.route('/api/reset_game', methods=['POST'])
 def reset_game():
+    auth_user = session.get('auth_user')
     session.clear()
+    if auth_user:
+        session['auth_user'] = auth_user
     return jsonify({'success': True, 'message': 'Game reset'})
 
 

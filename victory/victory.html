@@ -4,70 +4,61 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Victory</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      background: #0a1628;
-      font-family: 'DM Sans', system-ui, sans-serif;
-    }
-  </style>
+  <link rel="stylesheet" href="victory.css">
 </head>
 <body>
+  <div class="stars" id="stars"></div>
+  <div class="horizon-glow"></div>
+  
+  <main class="victory-page">
+    <section class="victory-card" aria-labelledby="victory-title">
+      <div class="victory-top">
+        <img src="/assets/pepega.jpg" alt="Victory avatar" class="victory-avatar">
+        <div class="victory-heading">
+          <h1 id="victory-title">VICTORY</h1>
+          <p>You found the lost luggage.</p>
+        </div>
+      </div>
+
+      <div id="victory-error-box" class="victory-error-box" hidden>
+        <h2>VICTORY ERROR</h2>
+        <p id="victory-error-text">Could not load session results</p>
+      </div>
+
+      <div class="victory-gif-wrap">
+        <img src="/assets/giphy.gif" alt="Victory animation" class="victory-gif">
+      </div>
+
+      <div class="victory-player">
+        <span class="victory-label">Player</span>
+        <span class="victory-value" id="victory-player-name">Guest</span>
+      </div>
+
+      <div class="victory-stats">
+        <div class="victory-stat">
+          <span class="victory-label">Points</span>
+          <span class="victory-value" id="victory-points">0</span>
+        </div>
+
+        <div class="victory-stat">
+          <span class="victory-label">Flights</span>
+          <span class="victory-value" id="victory-flights">0</span>
+        </div>
+
+        <div class="victory-stat">
+          <span class="victory-label">Time</span>
+          <span class="victory-value" id="victory-time">00:00</span>
+        </div>
+      </div>
+
+      <div class="victory-actions">
+        <!-- <button id="victory-restart-btn" class="victory-btn" type="button">Start new game</button> -->
+        <!-- <button id="victory-leaderboard-btn" class="victory-btn" type="button">Leaderboard</button>> -->
+        <button id="victory-menu-btn" class="victory-btn secondary" type="button">Main menu</button>
+      </div>
+    </section>
+  </main>
+
   <script src="/victory/victory.js"></script>
-  <script>
-    window.addEventListener('load', async () => {
-      try {
-        const response = await fetch('/api/finish_game');
-        const data = await response.json();
-
-        if (!data.success || !data.won) {
-          document.body.innerHTML = `
-            <div style="
-              min-height:100vh;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              color:#fff;
-              font-family:system-ui,sans-serif;
-              background:#0a1628;
-            ">
-              <div style="text-align:center">
-                <h1 style="margin-bottom:12px;">No finished game</h1>
-                <p style="color:#9fb3c8;">This screen only works after victory.</p>
-                <button onclick="window.location.href='/index.html'" style="
-                  margin-top:16px;
-                  padding:10px 16px;
-                  border-radius:8px;
-                  border:1px solid #1e4070;
-                  background:#10233f;
-                  color:#fff;
-                  cursor:pointer;
-                ">Main menu</button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        const gameViewResponse = await fetch('/api/game_view');
-        const gameViewData = await gameViewResponse.json();
-        const view = gameViewData.view || {};
-
-        showVictory({
-          airports: (view.game && view.game.visited_airports) || [],
-          time: 'Session finished',
-          points: data.score || 0,
-          playerName: data.player_name || 'Guest',
-          difficultyLevel: data.difficulty_level || 'level2'
-        });
-      } catch (err) {
-        console.error('victory page load error:', err);
-      }
-    });
-  </script>
 </body>
 </html>

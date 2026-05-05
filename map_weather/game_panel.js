@@ -4,6 +4,39 @@ window.addEventListener('load', () => {
   refreshGameView();
 });
 
+async function getStartGameParams() {
+  let playerName = null;
+  let difficultyLevel = null;
+
+  try {
+    const gameViewRes = await fetch('/api/game_view');
+    const gameViewData = await gameViewRes.json();
+
+    if (gameViewData.success && gameViewData.view?.game) {
+      playerName = gameViewData.view.game.player_name || null;
+      difficultyLevel = gameViewData.view.game.difficulty_level || null;
+    }
+  } catch (err) {
+    console.warn('Could not read /api/game_view for start params:', err);
+  }
+
+  try {
+    const meRes = await fetch('/api/me');
+    const meData = await meRes.json();
+
+    if (meData.success && meData.username && !playerName) {
+      playerName = meData.username;
+    }
+  } catch (err) {
+    console.warn('Could not read /api/me for start params:', err);
+  }
+
+  return {
+    player_name: playerName || 'Guest',
+    level: difficultyLevel || 'level2'
+  };
+}
+
 async function refreshGameView() {
   try {
     const res = await fetch('/api/game_view');
@@ -30,13 +63,12 @@ async function refreshGameView() {
 
 async function startNewGame() {
   try {
+    const startParams = await getStartGameParams();
+
     const startRes = await fetch('/api/start_game', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        player_name: 'Guest',
-        level: 'level2'
-      })
+      body: JSON.stringify(startParams)
     });
 
     const startData = await startRes.json();
@@ -149,13 +181,8 @@ async function submitNumericAnswer() {
         console.error('finish/save score error:', e);
       }
 
-      if (typeof showVictoryScreen === 'function') {
-        showVictoryScreen();
-      } else if (data.victory_url) {
-          window.location.href = data.victory_url;
-      } else {
-          window.location.href = '/victory/victory.html';
-      }
+      window.location.href = data.victory_url || '/victory/victory.html';
+      return;
     }
   } catch (err) {
     console.error('submitNumericAnswer error:', err);

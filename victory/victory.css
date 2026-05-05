@@ -1,0 +1,356 @@
+ :root {
+      --sky: #0a1628;
+      --sky-mid: #0e2040;
+      --sky-light: #163058;
+      --horizon: #1a4a7a;
+      --accent: #4db8ff;
+      --accent-glow: #4db8ff55;
+      --accent-warm: #ffb347;
+      --text: #e8f4ff;
+      --text-dim: #7aaed6;
+      --text-mute: #3d6a99;
+      --card: #0d1e35cc;
+      --card-border: #1e4070;
+      --green: #3ddc84;
+      --red: #ff5c5c;
+      --gold: #ffd700;
+      --silver: #c0c0c0;
+      --bronze: #cd7f32;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(77,184,255,0.18), transparent 34%),
+        radial-gradient(circle at bottom, rgba(61,220,132,0.10), transparent 38%),
+        var(--sky);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--d, 3s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+      opacity: var(--op, 0.6);
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: var(--op, 0.6); transform: scale(1); }
+      50% { opacity: 0.1; transform: scale(0.5); }
+    }
+
+    .horizon-glow {
+      position: fixed;
+      bottom: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 300px;
+      background: radial-gradient(ellipse at center bottom, #1a4a7a55 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .victory-page {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .victory-card {
+      width: 440px;
+      max-width: calc(100vw - 2rem);
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    }
+
+    .victory-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, #4db8ff18 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .victory-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 1.2rem 1.2rem 1rem;
+      border-bottom: 1px solid var(--card-border);
+      position: relative;
+      z-index: 1;
+    }
+
+    .victory-avatar {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.16);
+      filter: drop-shadow(0 0 10px #4db8ff66);
+    }
+
+    .victory-heading h1 {
+      margin: 0;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 30px;
+      letter-spacing: 3px;
+      line-height: 1;
+      color: var(--gold);
+    }
+
+    .victory-heading p {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--text-dim);
+      font-weight: 300;
+      letter-spacing: 0.3px;
+    }
+
+    .victory-error-box {
+      margin: 1rem 1.2rem 0;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,92,92,0.28);
+      background: rgba(255,92,92,0.08);
+      position: relative;
+      z-index: 1;
+    }
+
+    .victory-error-box h2 {
+      margin: 0 0 6px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 2px;
+      color: var(--red);
+      line-height: 1;
+    }
+
+    .victory-error-box p {
+      margin: 0;
+      font-size: 13px;
+      color: #ffc9c9;
+      line-height: 1.5;
+    }
+
+    .victory-gif-wrap {
+      padding: 18px 1.2rem 0;
+      display: flex;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .victory-gif {
+      width: 100%;
+      max-width: 240px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: #0a1628;
+      object-fit: cover;
+      filter: drop-shadow(0 0 12px #4db8ff22);
+    }
+
+    .victory-player {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: baseline;
+      margin: 18px 1.2rem 0;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(8px);
+      position: relative;
+      z-index: 1;
+    }
+
+    .victory-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 16px 1.2rem 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .victory-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 86px;
+      padding: 14px 10px;
+      text-align: center;
+      border-radius: var(--radius-sm);
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(8px);
+    }
+
+    .victory-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-mute);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .victory-value {
+      margin-top: 6px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 2px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+
+    .victory-stat:nth-child(1) .victory-value { color: var(--gold); }
+    .victory-stat:nth-child(2) .victory-value { color: var(--accent-warm); }
+    .victory-stat:nth-child(3) .victory-value { color: var(--green); }
+
+    .victory-actions {
+      display: grid;
+      gap: 10px;
+      padding: 18px 1.2rem 1.2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .victory-btn {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 2px;
+      width: 100%;
+      padding: 14px 20px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: none;
+    }
+
+    .victory-btn::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      transform: scaleY(0);
+      transform-origin: center;
+      transition: transform 0.2s;
+      border-radius: 0 2px 2px 0;
+    }
+
+    .victory-btn:hover {
+      background: #112340cc;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .victory-btn:hover::before {
+      transform: scaleY(1);
+    }
+
+    .victory-btn:active {
+      transform: scale(0.99);
+    }
+
+    .victory-btn .arr {
+      opacity: 0.5;
+      transition: opacity 0.2s, transform 0.2s;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0;
+    }
+
+    .victory-btn:hover .arr {
+      opacity: 1;
+      transform: translateX(4px);
+    }
+
+    @media (max-width: 520px) {
+      .victory-page {
+        padding: 16px;
+      }
+
+      .victory-card {
+        width: 100%;
+      }
+
+      .victory-top {
+        padding: 1rem 1rem 0.9rem;
+      }
+
+      .victory-heading h1 {
+        font-size: 26px;
+      }
+
+      .victory-gif-wrap {
+        padding: 16px 1rem 0;
+      }
+
+      .victory-player {
+        margin: 16px 1rem 0;
+      }
+
+      .victory-stats {
+        grid-template-columns: 1fr;
+        padding: 14px 1rem 0;
+      }
+
+      .victory-actions {
+        padding: 16px 1rem 1rem;
+      }
+
+      .victory-value {
+        font-size: 26px;
+      }
+    }
