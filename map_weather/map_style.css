@@ -44,14 +44,12 @@ body {
 .compass-control {
   margin: 0 !important;
   padding: 0 !important;
-  height: 100vh;
+  width: clamp(160px, 16vw, 300px);
+  height: calc(100vh - 110px);
   background: #07101e;
   border-left: 1px solid #1e4070;
   backdrop-filter: blur(10px);
-}
-
-.leaflet-control-attribution {
-  display: none !important;
+  box-sizing: border-box;
 }
 
 .leaflet-top.leaflet-right .compass-control {
@@ -60,12 +58,13 @@ body {
 
 .compass-wrap {
   position: relative;
-  width: 300px;
-  height: 340px;
+  width: clamp(160px, 16vw, 300px);
+  height: clamp(190px, 18vw, 340px);
   pointer-events: all;
   display: flex;
   justify-content: center;
   flex-direction: column;
+  margin: 0 auto;
 }
 
 .compass-base {
@@ -73,8 +72,8 @@ body {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 300px;
-  height: 300px;
+  width: clamp(160px, 16vw, 300px);
+  height: clamp(160px, 16vw, 300px);
   display: block;
   transform-origin: center center;
   transition: transform 0.8s linear;
@@ -83,10 +82,10 @@ body {
 .compass-arrow {
   position: absolute;
   left: 50%;
-  top: 150px;
+  top: clamp(80px, 8vw, 150px);
   transform: translate(-50%, -100%);
-  width: 6px;
-  height: 95px;
+  width: clamp(4px, 0.35vw, 6px);
+  height: clamp(50px, 5vw, 95px);
   background: red;
   border-radius: 4px;
   z-index: 10;
@@ -94,16 +93,16 @@ body {
 }
 
 .compass-arrow::before {
-  content: "";
+  content: '';
   position: absolute;
-  top: -12px;
+  top: clamp(-10px, -0.8vw, -12px);
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-bottom: 14px solid red;
+  border-left: clamp(7px, 0.7vw, 10px) solid transparent;
+  border-right: clamp(7px, 0.7vw, 10px) solid transparent;
+  border-bottom: clamp(10px, 1vw, 14px) solid red;
 }
 
 .compass-distance {
@@ -112,7 +111,7 @@ body {
   width: 100%;
   text-align: center;
   color: var(--text);
-  font-size: 22px;
+  font-size: clamp(14px, 1.2vw, 22px);
   font-weight: 700;
   text-shadow: 0 1px 4px rgba(0,0,0,0.9);
   z-index: 11;
