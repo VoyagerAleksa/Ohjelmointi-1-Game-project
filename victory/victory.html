@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Victory</title>
   <link rel="stylesheet" href="victory.css">
+  <script src="../audio/sound.js" defer></script>
 </head>
 <body>
   <div class="stars" id="stars"></div>
   <div class="horizon-glow"></div>
-  
+
   <main class="victory-page">
     <section class="victory-card" aria-labelledby="victory-title">
       <div class="victory-top">
@@ -60,5 +61,12 @@
   </main>
 
   <script src="/victory/victory.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.Sound) {
+        Sound.stopMusic();
+      }
+    });
+  </script>
 </body>
 </html>

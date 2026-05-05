@@ -131,23 +131,20 @@ let isUpdating = false;
 let gameWonHandled = false;
 
 function animatePlaneArc(marker, fromCoords, toCoords, duration = 2200, arcHeight = 0.18) {
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame);
-  }
+  if (animationFrame) cancelAnimationFrame(animationFrame);
 
   const start = performance.now();
-
   const p0 = { lat: fromCoords[0], lng: fromCoords[1] };
   const p2 = { lat: toCoords[0], lng: toCoords[1] };
+
+  const dx = p2.lng - p0.lng;
+  const dy = p2.lat - p0.lat;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
   const mid = {
     lat: (p0.lat + p2.lat) / 2,
     lng: (p0.lng + p2.lng) / 2
   };
-
-  const dx = p2.lng - p0.lng;
-  const dy = p2.lat - p0.lat;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
   const nx = -dy / dist;
   const ny = dx / dist;
@@ -161,12 +158,8 @@ function animatePlaneArc(marker, fromCoords, toCoords, duration = 2200, arcHeigh
   function bezierPoint(t) {
     const oneMinusT = 1 - t;
     return {
-      lat: oneMinusT * oneMinusT * p0.lat +
-           2 * oneMinusT * t * p1.lat +
-           t * t * p2.lat,
-      lng: oneMinusT * oneMinusT * p0.lng +
-           2 * oneMinusT * t * p1.lng +
-           t * t * p2.lng
+      lat: oneMinusT * oneMinusT * p0.lat + 2 * oneMinusT * t * p1.lat + t * t * p2.lat,
+      lng: oneMinusT * oneMinusT * p0.lng + 2 * oneMinusT * t * p1.lng + t * t * p2.lng
     };
   }
 
@@ -193,7 +186,8 @@ function animatePlaneArc(marker, fromCoords, toCoords, duration = 2200, arcHeigh
     if (tRaw < 1) {
       animationFrame = requestAnimationFrame(step);
     } else {
-      currentHeading = angle;
+      marker.setLatLng([p2.lat, p2.lng]);
+      marker.setRotationAngle(angle);
       animationFrame = null;
     }
   }
@@ -269,8 +263,6 @@ async function updateLocation() {
         rotationAngle: mDirection,
         rotationOrigin: 'center center'
       }).addTo(map).bindPopup(popupHtml, popupOptions);
-
-      currentHeading = mDirection;
     } else {
       marker.setPopupContent(popupHtml);
       marker.setIcon(getPlaneIcon(aircraftType));

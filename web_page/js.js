@@ -81,7 +81,18 @@ const T = {
     difficultyUnknown: 'Unknown',
 
     rulesText:
-      `<p>Find the lost suitcase hidden somewhere in Europe. Move between airports, use clues, and track the distance to locate it.</p> <p>You start in your chosen airport. Type the code or name of another airport to fly there. Each flight increases your flight count.</p> <p>After every move, you'll see:</p><br><p> -the distance to the suitcase</p><br> <p>-a hot/cold hint showing whether you're getting closer or farther</p> <br> <p>Choose your level before starting:</p> <ul> <li><strong style="color:#3ddc84">Level 1</strong> uses only major international airports.</li> <li><strong style="color:#ffb347">Level 2</strong> adds regional airports.</li> <li><strong style="color:#ff5c5c">Level 3</strong> includes small and private airfields.</li> </ul> <p>Find the suitcase to win and see your score.<br>Fewer flights mean more points.</p>`
+      `<p>Find the lost suitcase hidden somewhere in Europe. Move between airports, use clues, and track the distance to locate it.</p>
+       <p>You start in your chosen airport. Type the code or name of another airport to fly there. Each flight increases your flight count.</p>
+       <p>After every move, you'll see:</p>
+       <p>- the distance to the suitcase</p>
+       <p>- a hot/cold hint showing whether you're getting closer or farther</p>
+       <p>Choose your level before starting:</p>
+       <ul>
+         <li><strong style="color:#3ddc84">Level 1</strong> uses only major international airports.</li>
+         <li><strong style="color:#ffb347">Level 2</strong> adds regional airports.</li>
+         <li><strong style="color:#ff5c5c">Level 3</strong> includes small and private airfields.</li>
+       </ul>
+       <p>Find the suitcase to win and see your score.<br>Fewer flights mean more points.</p>`
   },
 
   fi: {
@@ -113,7 +124,7 @@ const T = {
     labelUsername: 'Käyttäjänimi',
     labelPassword: 'Salasana',
     labelConfirm: 'Vahvista salasana',
-    placeholderUser: 'Käyttäjänimesи',
+    placeholderUser: 'Käyttäjänimesi',
     placeholderPass: 'Vähintään 6 merkkiä',
     placeholderConfirm: 'Toista salasana',
     btnLogin: 'KIRJAUDU',
@@ -143,7 +154,18 @@ const T = {
     difficultyUnknown: 'Tuntematon',
 
     rulesText:
-      '<p>Löydä Eurooppaan piilotettu kadonnut matkalaukku. Liiku lentokenttien välillä, käytä vihjeitä ja seuraa etäisyyttä löytääksesi sen.</p> <p>Aloitat valitsemaltasi lentokentältä. Kirjoita toisen lentokentän koodi tai nimi lentääksesi sinne. Jokainen lento kasvattaa lentojen määrääsi.</p> <p>Jokaisen siirron jälkeen näet:</p><br><p> -etäisyyden matkalaukkuun</p><br> <p>- kuuma/kylmä -vihjeen, joka kertoo, lähestytkö vai loittonetko</p> <br> <p>Valitse taso ennen aloittamista:</p> <ul> <li><strong style="color:#3ddc84">Taso 1</strong> käyttää vain suuria kansainvälisiä lentokenttiä.</li> <li><strong style="color:#ffb347">Taso 2</strong> lisää alueellisia lentokenttiä.</li> <li><strong style="color:#ff5c5c">Taso 3</strong> sisältää myös pieniä ja yksityisiä lentokenttiä.</li> </ul> <p>Löydä matkalaukku voittaaksesi ja nähdäksesi pisteesi.<br>Mitä vähemmän lentoja, sitä enemmän pisteitä.</p>'
+      `<p>Löydä Eurooppaan piilotettu kadonnut matkalaukku. Liiku lentokenttien välillä, käytä vihjeitä ja seuraa etäisyyttä löytääksesi sen.</p>
+       <p>Aloitat valitsemaltasi lentokentältä. Kirjoita toisen lentokentän koodi tai nimi lentääksesi sinne. Jokainen lento kasvattaa lentojen määrääsi.</p>
+       <p>Jokaisen siirron jälkeen näet:</p>
+       <p>- etäisyyden matkalaukkuun</p>
+       <p>- kuuma/kylmä -vihjeen, joka kertoo, lähestytkö vai loittonetko</p>
+       <p>Valitse taso ennen aloittamista:</p>
+       <ul>
+         <li><strong style="color:#3ddc84">Taso 1</strong> käyttää vain suuria kansainvälisiä lentokenttiä.</li>
+         <li><strong style="color:#ffb347">Taso 2</strong> lisää alueellisia lentokenttiä.</li>
+         <li><strong style="color:#ff5c5c">Taso 3</strong> sisältää myös pieniä ja yksityisiä lentokenttiä.</li>
+       </ul>
+       <p>Löydä matkalaukku voittaaksesi ja nähdäksesi pisteesi.<br>Mitä vähemmän lentoja, sitä enemmän pisteitä.</p>`
   }
 };
 
@@ -184,7 +206,6 @@ function setLang(l) {
   }
 }
 
-// init
 setLang('en');
 
 // ── CONTINUE BUTTON ──
@@ -208,7 +229,6 @@ async function checkContinueSession() {
     });
 
     const data = await res.json();
-
     const game = data.view?.game;
     const hasActiveGame = !!(data.success && game?.game_started && !game?.won);
 
@@ -371,7 +391,10 @@ function hideLogout() {
 }
 
 function doLogout() {
-  if (typeof Sound !== 'undefined' && Sound.stopMusic) Sound.stopMusic();
+  if (typeof Sound !== 'undefined') {
+    if (Sound.stopMusic) Sound.stopMusic();
+    if (Sound.syncSoundToggles) Sound.syncSoundToggles();
+  }
 
   fetch('/api/logout', { method: 'POST' }).catch(() => {});
 
@@ -435,32 +458,18 @@ function go(id) {
 // ── GAME ──
 async function startGame(level) {
   const levelMap = {
-    1: {
-      level: 'level1',
-      airport_types: ['large_airport']
-    },
-    2: {
-      level: 'level2',
-      airport_types: ['large_airport', 'medium_airport']
-    },
-    3: {
-      level: 'level3',
-      airport_types: ['large_airport', 'medium_airport', 'small_airport']
-    }
+    1: { level: 'level1', airport_types: ['large_airport'] },
+    2: { level: 'level2', airport_types: ['large_airport', 'medium_airport'] },
+    3: { level: 'level3', airport_types: ['large_airport', 'medium_airport', 'small_airport'] }
   };
 
   const config = levelMap[level];
-
   if (!config) {
     alert('Invalid level selected');
     return;
   }
 
   try {
-    if (typeof Sound !== 'undefined' && Sound.playGameTheme) {
-      Sound.playGameTheme();
-    }
-
     const startRes = await fetch('/api/start_game', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -501,6 +510,18 @@ function toggle(setting, val) {
 
   if (setting === 'sound' && typeof Sound !== 'undefined' && Sound.setSound) {
     Sound.setSound(val === 'on');
+
+    if (typeof Sound.syncSoundToggles === 'function') {
+      Sound.syncSoundToggles();
+    }
+
+    if (val === 'on' && typeof Sound.playAmbient === 'function') {
+      Sound.playAmbient();
+    }
+
+    if (val === 'off' && typeof Sound.stopMusic === 'function') {
+      Sound.stopMusic();
+    }
   }
 
   if (setting === 'hints') {
@@ -555,11 +576,7 @@ function loadLeaderboard(level = '') {
 
       data.leaders.forEach((player, index) => {
         const isTop = index < 3;
-        const rankClass =
-          index === 0 ? 'r1' :
-          index === 1 ? 'r2' :
-          index === 2 ? 'r3' : 'rn';
-
+        const rankClass = index === 0 ? 'r1' : index === 1 ? 'r2' : index === 2 ? 'r3' : 'rn';
         const difficultyLabel = getDifficultyLabel(player.difficulty_level);
         const difficultyClass = getDifficultyClass(player.difficulty_level);
 
@@ -598,9 +615,7 @@ function loadLeaderboard(level = '') {
 function saveScoreToBackend(score, difficultyLevel) {
   fetch('/api/save_score', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       player_name: currentUser || 'Guest',
       difficulty_level: difficultyLevel || 'level2',

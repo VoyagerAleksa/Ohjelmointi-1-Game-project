@@ -279,8 +279,8 @@ function injectPanelStyles() {
       right: 0;
       bottom: 2rem;
       z-index: 9998;
-      width: 18.5rem;
-      height: 61vh;
+      width: 14.5%;
+      height: 61.5%;
       margin: 0;
       padding: 8px 0 8px 14px;
       background: transparent;
@@ -291,7 +291,7 @@ function injectPanelStyles() {
       font-family: 'Segoe UI', system-ui, sans-serif;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 0.5%;
       overflow: hidden;
     }
 
@@ -389,6 +389,7 @@ function injectPanelStyles() {
       font-size: 12px;
       padding: 10px 12px;
       outline: none;
+      margin-bottom: 7%;
       font-family: inherit;
       transition: border-color 0.2s, background 0.2s;
     }
@@ -408,6 +409,7 @@ function injectPanelStyles() {
       background: #4db8ff;
       color: #08111d;
       border: none;
+      margin-bottom: 7%;
       border-radius: 8px 0 0 8px;
       font-size: 15px;
       font-weight: 700;
