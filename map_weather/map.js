@@ -271,7 +271,6 @@ async function updateLocation() {
         animatePlaneArc(marker, lastLocation, currentCoords, 2200, 0.18);
       } else {
         marker.setLatLng(currentCoords);
-        marker.setRotationAngle(mDirection);
       }
     }
 
