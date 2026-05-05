@@ -113,7 +113,7 @@ const T = {
     labelUsername: 'Käyttäjänimi',
     labelPassword: 'Salasana',
     labelConfirm: 'Vahvista salasana',
-    placeholderUser: 'Käyttäjänimesi',
+    placeholderUser: 'Käyttäjänimesи',
     placeholderPass: 'Vähintään 6 merkkiä',
     placeholderConfirm: 'Toista salasana',
     btnLogin: 'KIRJAUDU',
@@ -187,6 +187,45 @@ function setLang(l) {
 // init
 setLang('en');
 
+// ── CONTINUE BUTTON ──
+function setContinueButtonState(enabled) {
+  const btn = document.getElementById('btn-continue');
+  if (!btn) return;
+
+  btn.classList.toggle('disabled', !enabled);
+  btn.disabled = !enabled;
+  btn.style.pointerEvents = enabled ? 'auto' : 'none';
+  btn.style.opacity = enabled ? '1' : '0.45';
+  btn.style.filter = enabled ? 'none' : 'grayscale(1)';
+  btn.onclick = enabled ? continueGame : null;
+}
+
+async function checkContinueSession() {
+  try {
+    const res = await fetch('/api/game_view', {
+      method: 'GET',
+      credentials: 'same-origin'
+    });
+
+    const data = await res.json();
+
+    const game = data.view?.game;
+    const hasActiveGame = !!(data.success && game?.game_started && !game?.won);
+
+    currentGame = hasActiveGame ? data.view : null;
+    setContinueButtonState(hasActiveGame);
+  } catch (error) {
+    console.error('checkContinueSession error:', error);
+    currentGame = null;
+    setContinueButtonState(false);
+  }
+}
+
+function continueGame() {
+  if (!currentGame) return;
+  window.location.href = '/map.html';
+}
+
 // ── AUTH ──
 function switchTab(tab) {
   ['login', 'register'].forEach((t) => {
@@ -256,15 +295,15 @@ function doRegister() {
   clearErrors();
   if (typeof Sound !== 'undefined' && Sound.playAmbient) Sound.playAmbient();
 
-  const user    = document.getElementById('reg-user')?.value.trim() || '';
-  const pass    = document.getElementById('reg-pass')?.value || '';
+  const user = document.getElementById('reg-user')?.value.trim() || '';
+  const pass = document.getElementById('reg-pass')?.value || '';
   const confirm = document.getElementById('reg-confirm')?.value || '';
 
   let ok = true;
-  if (!user)               ok = showErr('reg-user-err',    T[lang].errRequired);
-  if (!pass)               ok = showErr('reg-pass-err',    T[lang].errRequired);
-  else if (pass.length < 6) ok = showErr('reg-pass-err',   T[lang].errPassShort);
-  if (!confirm)            ok = showErr('reg-confirm-err', T[lang].errRequired);
+  if (!user) ok = showErr('reg-user-err', T[lang].errRequired);
+  if (!pass) ok = showErr('reg-pass-err', T[lang].errRequired);
+  else if (pass.length < 6) ok = showErr('reg-pass-err', T[lang].errPassShort);
+  if (!confirm) ok = showErr('reg-confirm-err', T[lang].errRequired);
   else if (pass !== confirm) ok = showErr('reg-confirm-err', T[lang].errPassMatch);
   if (!ok) return;
 
@@ -308,14 +347,15 @@ function showSuccess(nameMsg, username) {
   if (successMsg) successMsg.textContent = T[lang].preparingMsg;
   if (successBlock) successBlock.classList.add('show');
 
-  setTimeout(() => {
+  setTimeout(async () => {
     const ov = document.getElementById('auth-overlay');
     if (ov) {
       ov.classList.add('hide');
-      setTimeout(() => {
+      setTimeout(async () => {
         ov.style.display = 'none';
         const menuUsername = document.getElementById('menu-username');
         if (menuUsername) menuUsername.textContent = currentUser;
+        await checkContinueSession();
       }, 350);
     }
   }, 1600);
@@ -337,6 +377,7 @@ function doLogout() {
 
   hideLogout();
   currentUser = '';
+  currentGame = null;
 
   ['login-user', 'login-pass', 'reg-user', 'reg-pass', 'reg-confirm'].forEach((id) => {
     const el = document.getElementById(id);
@@ -344,6 +385,7 @@ function doLogout() {
   });
 
   clearErrors();
+  setContinueButtonState(false);
 
   document.getElementById('auth-success')?.classList.remove('show');
   document.querySelectorAll('.auth-panel').forEach((p) => p.classList.remove('active'));
@@ -363,20 +405,25 @@ function doLogout() {
   go('screen-main');
 }
 
-// ── АВТОЛОГИН при загрузке страницы ──
+// ── AUTOLOGIN ──
 (function checkExistingSession() {
   fetch('/api/me')
     .then(r => r.json())
-    .then(data => {
+    .then(async (data) => {
       if (data.success && data.username) {
         currentUser = data.username;
         const ov = document.getElementById('auth-overlay');
         if (ov) ov.style.display = 'none';
         const menuUsername = document.getElementById('menu-username');
         if (menuUsername) menuUsername.textContent = currentUser;
+        await checkContinueSession();
+      } else {
+        setContinueButtonState(false);
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      setContinueButtonState(false);
+    });
 })();
 
 // ── NAVIGATION ──
@@ -433,6 +480,7 @@ async function startGame(level) {
     }
 
     currentGame = data.view || null;
+    setContinueButtonState(true);
     window.location.href = '/map.html';
   } catch (error) {
     console.error('startGame error:', error);
