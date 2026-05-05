@@ -81,7 +81,7 @@ const T = {
     difficultyUnknown: 'Unknown',
 
     rulesText:
-      '<p>Find the lost suitcase hidden somewhere in Europe. Move between airports, use clues, and track the distance to locate it.</p> <p>You start in your chosen airport. Type the code or name of another airport to fly there. Each flight increases your flight count.</p> <p>After every move, you’ll see:</p><br><p> -the distance to the suitcase</p><br> <p>-a hot/cold hint showing whether you’re getting closer or farther</p> <br> <p>Choose your level before starting:</p> <ul> <li><strong style="color:#3ddc84">Level 1</strong> uses only major international airports.</li> <li><strong style="color:#ffb347">Level 2</strong> adds regional airports.</li> <li><strong style="color:#ff5c5c">Level 3</strong> includes small and private airfields.</li> </ul> <p>Find the suitcase to win and see your score.<br>Fewer flights mean more points.</p>'
+      `<p>Find the lost suitcase hidden somewhere in Europe. Move between airports, use clues, and track the distance to locate it.</p> <p>You start in your chosen airport. Type the code or name of another airport to fly there. Each flight increases your flight count.</p> <p>After every move, you'll see:</p><br><p> -the distance to the suitcase</p><br> <p>-a hot/cold hint showing whether you're getting closer or farther</p> <br> <p>Choose your level before starting:</p> <ul> <li><strong style="color:#3ddc84">Level 1</strong> uses only major international airports.</li> <li><strong style="color:#ffb347">Level 2</strong> adds regional airports.</li> <li><strong style="color:#ff5c5c">Level 3</strong> includes small and private airfields.</li> </ul> <p>Find the suitcase to win and see your score.<br>Fewer flights mean more points.</p>`
   },
 
   fi: {
@@ -216,13 +216,14 @@ function showErr(id, msg) {
   return false;
 }
 
-function isEmail(v) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+function showServerErr(panel, msg) {
+  const errId = panel === 'login' ? 'login-pass-err' : 'reg-user-err';
+  showErr(errId, msg);
 }
 
+// ── LOGIN ──
 function doLogin() {
   if (typeof Sound !== 'undefined' && Sound.playAmbient) Sound.playAmbient();
-
   clearErrors();
 
   const user = document.getElementById('login-user')?.value.trim() || '';
@@ -233,34 +234,62 @@ function doLogin() {
   if (!pass) ok = showErr('login-pass-err', T[lang].errRequired);
   if (!ok) return;
 
-  showSuccess(T[lang].welcomeBack + ' ' + user.toUpperCase(), user);
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user, password: pass })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showSuccess(T[lang].welcomeBack + ' ' + data.username.toUpperCase(), data.username);
+      } else {
+        showServerErr('login', data.error || 'Login failed');
+      }
+    })
+    .catch(() => showServerErr('login', 'Server error, please try again'));
 }
 
+// ── REGISTER ──
 function doRegister() {
   clearErrors();
   if (typeof Sound !== 'undefined' && Sound.playAmbient) Sound.playAmbient();
 
-  const user = document.getElementById('reg-user')?.value.trim() || '';
-  const pass = document.getElementById('reg-pass')?.value || '';
+  const user    = document.getElementById('reg-user')?.value.trim() || '';
+  const pass    = document.getElementById('reg-pass')?.value || '';
   const confirm = document.getElementById('reg-confirm')?.value || '';
 
   let ok = true;
-
-  if (!user) ok = showErr('reg-user-err', T[lang].errRequired);
-  if (!pass) ok = showErr('reg-pass-err', T[lang].errRequired);
-  else if (pass.length < 6) ok = showErr('reg-pass-err', T[lang].errPassShort);
-
-  if (!confirm) ok = showErr('reg-confirm-err', T[lang].errRequired);
+  if (!user)               ok = showErr('reg-user-err',    T[lang].errRequired);
+  if (!pass)               ok = showErr('reg-pass-err',    T[lang].errRequired);
+  else if (pass.length < 6) ok = showErr('reg-pass-err',   T[lang].errPassShort);
+  if (!confirm)            ok = showErr('reg-confirm-err', T[lang].errRequired);
   else if (pass !== confirm) ok = showErr('reg-confirm-err', T[lang].errPassMatch);
-
   if (!ok) return;
 
-  showSuccess(T[lang].welcomeNew + ' ' + user.toUpperCase(), user);
+  fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user, password: pass })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showSuccess(T[lang].welcomeNew + ' ' + data.username.toUpperCase(), data.username);
+      } else {
+        if (data.error && data.error.toLowerCase().includes('taken')) {
+          showErr('reg-user-err', data.error);
+        } else {
+          showServerErr('reg', data.error || 'Registration failed');
+        }
+      }
+    })
+    .catch(() => showServerErr('reg', 'Server error, please try again'));
 }
 
+// ── GUEST ──
 function doGuest() {
   if (typeof Sound !== 'undefined' && Sound.playAmbient) Sound.playAmbient();
-
   const name = lang === 'fi' ? 'VIERAS' : 'GUEST';
   showSuccess((lang === 'fi' ? 'TERVETULOA, ' : 'WELCOME, ') + name, name);
 }
@@ -303,6 +332,8 @@ function hideLogout() {
 function doLogout() {
   if (typeof Sound !== 'undefined' && Sound.stopMusic) Sound.stopMusic();
 
+  fetch('/api/logout', { method: 'POST' }).catch(() => {});
+
   hideLogout();
   currentUser = '';
 
@@ -330,6 +361,22 @@ function doLogout() {
 
   go('screen-main');
 }
+
+// ── АВТОЛОГИН при загрузке страницы ──
+(function checkExistingSession() {
+  fetch('/api/me')
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.username) {
+        currentUser = data.username;
+        const ov = document.getElementById('auth-overlay');
+        if (ov) ov.style.display = 'none';
+        const menuUsername = document.getElementById('menu-username');
+        if (menuUsername) menuUsername.textContent = currentUser;
+      }
+    })
+    .catch(() => {});
+})();
 
 // ── NAVIGATION ──
 function go(id) {
