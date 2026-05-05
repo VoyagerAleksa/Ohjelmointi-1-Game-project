@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, session, send_from_directory
 from datetime import datetime
 import mysql.connector
+import bcrypt
 
 from difficulty_config import DifficultyConfig
 from leaderboard import save_to_leaderboard, get_leaderboard_data
@@ -15,7 +16,7 @@ connection = mysql.connector.connect(
     port=3306,
     database='game_project',
     user='root',
-    password='BubaBuba60',
+    password='...',
     autocommit=True,
     charset='utf8mb4',
     use_unicode=True
@@ -451,7 +452,6 @@ def apply_flight_move(game_state, next_location):
         build_country_question(game_state)
         return game_state, False, 'Could not resolve destination coordinates.'
 
-    # Направление движения самолёта: current -> next
     movement_direction = Directions(current_coords, next_coords)
     flight_distance = movement_direction.distance_km()
 
@@ -470,7 +470,6 @@ def apply_flight_move(game_state, next_location):
         build_country_question(game_state)
         return game_state, False, 'Could not resolve luggage coordinates.'
 
-    # Направление компаса: next/current actual location -> luggage
     direction_to_luggage = Directions(next_coords, luggage_coords)
     distance_to_luggage = direction_to_luggage.distance_km()
 
@@ -575,6 +574,105 @@ def calculate_final_score(game_state):
     return int(max(0, score_with_multiplier - emissions_penalty))
 
 
+# ── AUTH HELPERS ──────────────────────────────────────────────
+
+def db_get_user(username):
+    """Вернуть строку пользователя или None."""
+    cursor.execute(
+        "SELECT id, username, password_hash FROM users WHERE username = %s LIMIT 1",
+        (username,)
+    )
+    return cursor.fetchone()
+
+
+def db_create_user(username, password):
+    """Создать пользователя. Вернуть True/False."""
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
+            (username, pw_hash)
+        )
+        return True
+    except Exception:
+        return False
+
+
+def validate_auth_input(username, password):
+    """Базовая валидация. Вернуть строку ошибки или None."""
+    if not username or not username.strip():
+        return 'Username is required'
+    if len(username.strip()) < 2:
+        return 'Username must be at least 2 characters'
+    if not password:
+        return 'Password is required'
+    if len(password) < 6:
+        return 'Password must be at least 6 characters'
+    return None
+
+
+
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    data = request.get_json() or {}
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+
+    err = validate_auth_input(username, password)
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+
+    if db_get_user(username):
+        return jsonify({'success': False, 'error': 'Username already taken'}), 409
+
+    ok = db_create_user(username, password)
+    if not ok:
+        return jsonify({'success': False, 'error': 'Registration failed, try again'}), 500
+
+    session['auth_user'] = username
+    return jsonify({'success': True, 'username': username}), 201
+
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json() or {}
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+
+    err = validate_auth_input(username, password)
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+
+    row = db_get_user(username)
+    if not row:
+        return jsonify({'success': False, 'error': 'Invalid username or password'}), 401
+
+    stored_hash = row[2].encode() if isinstance(row[2], str) else row[2]
+    if not bcrypt.checkpw(password.encode(), stored_hash):
+        return jsonify({'success': False, 'error': 'Invalid username or password'}), 401
+
+    session['auth_user'] = username
+    return jsonify({'success': True, 'username': username})
+
+
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    session.clear()
+    return jsonify({'success': True})
+
+
+@app.route('/api/me', methods=['GET'])
+def api_me():
+    """Проверить текущую сессию (для автологина при перезагрузке страницы)."""
+    user = session.get('auth_user')
+    if user:
+        return jsonify({'success': True, 'username': user})
+    return jsonify({'success': False}), 401
+
+
+# ── SESSION / ROUTING ─────────────────────────────────────────
+
 @app.before_request
 def initialize_session():
     if 'game_state' not in session:
@@ -650,6 +748,8 @@ def serve_assets(filename):
 def serve_audio(filename):
     return send_from_directory('audio', filename)
 
+
+# ── GAME API ──────────────────────────────────────────────────
 
 @app.route('/api/start_game', methods=['POST'])
 def start_game():
