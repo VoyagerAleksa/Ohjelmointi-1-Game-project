@@ -279,8 +279,8 @@ function injectPanelStyles() {
       right: 0;
       bottom: 2rem;
       z-index: 9998;
-      width: 14.5%;
-      height: 61.5%;
+      width: 15.8%;
+      height: 54.5%;
       margin: 0;
       padding: 8px 0 8px 14px;
       background: transparent;
@@ -393,7 +393,7 @@ function injectPanelStyles() {
       font-size: 12px;
       padding: 10px 12px;
       outline: none;
-      margin-bottom: 7%;
+      margin-bottom: 10%;
       font-family: inherit;
       transition: border-color 0.2s, background 0.2s;
     }
@@ -413,7 +413,7 @@ function injectPanelStyles() {
       background: #4db8ff;
       color: #08111d;
       border: none;
-      margin-bottom: 7%;
+      margin-bottom: 10%;
       border-radius: 8px 0 0 8px;
       font-size: 15px;
       font-weight: 700;
