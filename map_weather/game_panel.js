@@ -331,10 +331,10 @@ function injectPanelStyles() {
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
-      column-count: 2;
-      column-gap: 10px;
-      column-fill: auto;
-      padding: 1px 2px 1px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 2px 4px 2px 0;
       font-size: 12.5px;
       color: #dcecff;
       scrollbar-width: thin;
@@ -355,10 +355,14 @@ function injectPanelStyles() {
     }
 
     .gp-option-line {
-      break-inside: avoid;
-      margin-bottom: 2px;
-      line-height: 1.2;
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      align-items: start;
+      gap: 6px;
+      line-height: 1.3;
       word-break: break-word;
+      overflow-wrap: anywhere;
+      padding-right: 4px;
     }
 
     .gp-option-index {
