@@ -7,6 +7,7 @@ let currentMoves = 0;
 let assistantUnlocked = false;
 let assistantEnabled = true;
 let assistantUsed = false;
+let assistantRefreshing = false;
 
 window.addEventListener('load', () => {
   injectStyles();
@@ -15,6 +16,9 @@ window.addEventListener('load', () => {
 });
 
 async function refreshAssistantState() {
+  if (assistantRefreshing) return;
+  assistantRefreshing = true;
+
   setFabState('loading');
 
   try {
@@ -44,15 +48,17 @@ async function refreshAssistantState() {
     }
 
     if (assistantUsed) {
-      setFabState('used');
+      setFabState('used', currentMoves);
     } else {
-      setFabState(assistantUnlocked ? 'ready' : 'locked');
+      setFabState(assistantUnlocked ? 'ready' : 'locked', currentMoves);
     }
   } catch (err) {
     console.error('[LugAssistant] Failed to load assistant state:', err);
     luggage = null;
     assistantUnlocked = false;
     setFabState('error');
+  } finally {
+    assistantRefreshing = false;
   }
 
   syncAssistantVisibility();
@@ -127,46 +133,43 @@ async function showFog() {
   });
 }
 
-function setFabState(state) {
+function setFabState(state, movesValue = currentMoves) {
   const fab = document.getElementById('lug-fab');
   if (!fab) return;
+
+  fab.dataset.state = state;
 
   if (state === 'loading') {
     fab.style.opacity = '0.65';
     fab.style.borderColor = '#1e4a7a';
-    fab.title = 'Loading...';
-    fab.dataset.state = 'loading';
+    fab.dataset.tooltip = 'Loading...';
     return;
   }
 
   if (state === 'locked') {
     fab.style.opacity = '0.45';
     fab.style.borderColor = '#6b7280';
-    fab.title = `Assistant unlocks after ${REQUIRED_MOVES} flights. Current: ${currentMoves}`;
-    fab.dataset.state = 'locked';
+    fab.dataset.tooltip = `Assistant unlocks after ${REQUIRED_MOVES} flights. Current: ${movesValue}`;
     return;
   }
 
   if (state === 'used') {
-    fab.style.opacity = '0.4';
+    fab.style.opacity = '0.25';
     fab.style.borderColor = '#6b7280';
-    fab.title = 'Assistant already used in this session';
-    fab.dataset.state = 'used';
+    fab.dataset.tooltip = 'Assistant already used in this session';
     return;
   }
 
   if (state === 'error') {
     fab.style.opacity = '0.65';
     fab.style.borderColor = '#ff5c5c';
-    fab.title = 'Load error — check console';
-    fab.dataset.state = 'error';
+    fab.dataset.tooltip = 'Load error — check console';
     return;
   }
 
   fab.style.opacity = '1';
   fab.style.borderColor = '#1e4a7a';
-  fab.title = 'Show hint zone';
-  fab.dataset.state = 'ready';
+  fab.dataset.tooltip = 'Show hint zone';
 }
 
 function setAssistantEnabled(enabled) {
@@ -194,7 +197,7 @@ function injectUI() {
 
   const wrap = document.createElement('div');
   wrap.innerHTML = `
-    <button id="lug-fab" type="button" title="Show hint zone">
+    <button id="lug-fab" type="button">
       <img src="/assets/mem_cat.jpg" alt="Assistant" style="width:80px;height:80px;object-fit:cover;border-radius:50%;">
     </button>
   `;
@@ -203,6 +206,9 @@ function injectUI() {
 
   const fab = document.getElementById('lug-fab');
   fab.addEventListener('click', showFog);
+  fab.addEventListener('mouseenter', () => {
+    refreshAssistantState();
+  });
 
   syncAssistantVisibility();
 }
@@ -227,18 +233,43 @@ function injectStyles() {
       box-shadow: 0 4px 20px rgba(0,0,0,0.45);
       cursor: pointer;
       padding: 0;
-      overflow: hidden;
+      overflow: visible;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s, opacity 0.3s;
       outline: none;
     }
+    #lug-fab::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 96px;
+    bottom: 50%;
+    transform: translateY(50%);
+    background: rgba(14, 32, 64, 0.96);
+    color: #fff;
+    border: 1px solid #1e4a7a;
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-width: 220px;
+    max-width: 280px;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: normal;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    }
 
     #lug-fab:hover {
       transform: scale(1.1);
       box-shadow: 0 6px 24px rgba(255,224,102,0.35);
       border-color: #ffe066;
+    }
+    #lug-fab:hover::after,
+    #lug-fab:focus-visible::after {
+      opacity: 1;
     }
 
     #lug-fab:active {
