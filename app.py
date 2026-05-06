@@ -178,7 +178,7 @@ def enumerate_options(raw_options):
     ]
 
 
-def spawn_baggage_between_countries(start_country_name, dest_country_name):
+def spawn_baggage_between_countries(start_country_name, dest_country_name, airport_types):
     cursor.execute(
         "SELECT iso_country FROM country WHERE name LIKE %s LIMIT 1",
         (f"%{start_country_name}%",)
@@ -219,17 +219,21 @@ def spawn_baggage_between_countries(start_country_name, dest_country_name):
     min_lon = min(bounds1[2], bounds2[2])
     max_lon = max(bounds1[3], bounds2[3])
 
-    query = """
+    placeholders = ",".join(["%s"] * len(airport_types))
+
+    query = f"""
         SELECT ident, latitude_deg, longitude_deg, name, iso_country
         FROM airport
         WHERE latitude_deg BETWEEN %s AND %s
           AND longitude_deg BETWEEN %s AND %s
           AND iso_country != %s
-          AND type = 'large_airport'
+          AND type IN ({placeholders})
         ORDER BY RAND()
         LIMIT 1
     """
-    cursor.execute(query, (min_lat, max_lat, min_lon, max_lon, dest_code))
+
+    params = (min_lat, max_lat, min_lon, max_lon, dest_code, *airport_types)
+    cursor.execute(query, params)
     baggage = cursor.fetchone()
 
     if baggage:
@@ -311,7 +315,8 @@ def finalize_game_setup(game_state):
     )
     luggage_location = spawn_baggage_between_countries(
         start_country_name,
-        destination_country_name
+        destination_country_name,
+        airport_types
     )
 
     if not current_location:
