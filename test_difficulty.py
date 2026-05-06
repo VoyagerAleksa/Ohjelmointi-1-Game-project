@@ -1,15 +1,9 @@
-#!/usr/bin/env python3
-"""
-Test script for the difficulty system implementation.
-Tests difficulty configuration, scoring, and emissions calculations.
-"""
 
 from difficulty_config import DifficultyConfig
 from flight_emissions import FlightEmissions
 
 
 def calculate_score(moves, difficulty_level='level2', emissions_kg=0):
-    """Calculate score with difficulty multipliers and emissions penalties."""
     try:
         difficulty_config = DifficultyConfig(difficulty_level)
     except ValueError:
@@ -24,11 +18,11 @@ def calculate_score(moves, difficulty_level='level2', emissions_kg=0):
 
 
 def test_difficulty_config():
-    print('🧪 Testing Level Configuration...\n')
+    print('Testing Level Configuration...\n')
 
     for level in ['level1', 'level2', 'level3']:
         config = DifficultyConfig(level)
-        print(f'✅ {level.upper()}: {config.name}')
+        print(f'{level.upper()}: {config.name}')
         print(f'   Airport types: {config.airport_types}')
         print(f'   Compass mode: {config.compass_accuracy}')
         print(f'   Emissions penalty: {config.emissions_penalty_multiplier}')
@@ -38,7 +32,7 @@ def test_difficulty_config():
 
 
 def test_scoring():
-    print('🧪 Testing Score Calculations...\n')
+    print('Testing Score Calculations...\n')
 
     test_cases = [
         (5, 'level1', 100),
@@ -51,23 +45,23 @@ def test_scoring():
 
     for moves, level, emissions in test_cases:
         score = calculate_score(moves, level, emissions)
-        print(f'✅ {moves} flights, {level}, {emissions}kg CO2 → Score: {score}')
+        print(f'{moves} flights, {level}, {emissions}kg CO2 → Score: {score}')
 
 
 def test_emissions():
-    print('\n🧪 Testing Emissions Calculations...\n')
+    print('\nTesting Emissions Calculations...\n')
 
     for aircraft in ['small', 'medium', 'large']:
         emissions = FlightEmissions(aircraft_type=aircraft)
         flight = emissions.record_flight(500, 'EFHK', 'LFPG')
         print(
-            f"✅ {aircraft.upper()} aircraft, 500km: "
+            f"{aircraft.upper()} aircraft, 500km: "
             f"{flight['fuel_liters']:.1f}L fuel, {flight['co2_kg']:.1f}kg CO2"
         )
 
 
 def test_compass_display():
-    print('\n🧪 Testing Compass Display...\n')
+    print('\nTesting Compass Display...\n')
 
     configs = {
         'level1': DifficultyConfig('level1'),
@@ -77,16 +71,16 @@ def test_compass_display():
 
     for level, config in configs.items():
         display = config.get_compass_display(45, 500)
-        print(f"✅ {level.upper()}: {display['message']}")
+        print(f"{level.upper()}: {display['message']}")
 
 
 def test_available_difficulties():
-    print('\n🧪 Testing Available Difficulties...\n')
+    print('\nTesting Available Difficulties...\n')
 
     difficulties = DifficultyConfig.get_available_difficulties()
     for difficulty in difficulties:
         print(
-            f"✅ {difficulty['level']}: "
+            f"{difficulty['level']}: "
             f"{difficulty['name']} | "
             f"x{difficulty['score_multiplier']} | "
             f"{difficulty['description']}"
@@ -94,13 +88,13 @@ def test_available_difficulties():
 
 
 def main():
-    print('🚀 Running Level System Tests...\n')
+    print('Running Level System Tests...\n')
     test_difficulty_config()
     test_scoring()
     test_emissions()
     test_compass_display()
     test_available_difficulties()
-    print('\n🎉 All tests completed successfully!')
+    print('\nAll tests completed successfully!')
 
 
 if __name__ == '__main__':
